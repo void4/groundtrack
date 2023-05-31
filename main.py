@@ -5,15 +5,18 @@ from argparse import ArgumentParser
 import pandas as pd
 import plotly.express as px
 
-parser = ArgumentParser(prog="groundtrack", description="plots lon,lat,alt groundtracks of (impacting) asteroids and of all MPC observatories")
+parser = ArgumentParser(prog="groundtrack.py", description="Plots lon,lat,alt groundtracks of (impacting) asteroids and all observatories with an MPC code")
 
 parser.add_argument("--objname", default="2023 CX1", help="Name of the asteroid groundtrack to plot. Default is 2023 CX1")
 parser.add_argument("--obscode", default="000", help="Observatory from which to calculate altitude and azimuth angles toward the asteroid. Default is Greenwich (000). You can search for them here: https://www.projectpluto.com/mpc_stat.htm or use the map generated with this tool.")
 parser.add_argument("--imgpath", default="groundtrack.png", help="Path to save plot to")
 parser.add_argument("--hide-mpc", action="store_true", default=False, help="Do not plot MPC observatory locations")
-parser.add_argument("--no-html", action="store_false", default=True, help="Do not output html file")
+parser.add_argument("--no-html", action="store_true", default=False, help="Do not output html file")
 parser.add_argument("--htmlpath", default="groundtrack.html", help="Path to store html map to")
 parser.add_argument("--interactive", action="store_true", default=False, help="Open interactive map in browser")
+parser.add_argument("--ephem-start", default="2023 Feb 13 02:00", help="Datetime of start of ephemeris calculation. Default: \"2023 Feb 13 02:00\"")
+parser.add_argument("--ephem-size", default="1s", help="Size of ephemeris step. Default: \"1s\"")
+parser.add_argument("--ephem-steps", default=60*60, help="Number of ephemeris calculation steps to make. Default: 3600")
 
 args = parser.parse_args()
 
@@ -47,9 +50,9 @@ if not args.hide_mpc:
 		hover_names.append(f"Code: {code} {region_name} @ Est. Altitude: {alt}m")
 
 objname = args.objname
-EPHEM_START = "2023 Feb 13 02:00"
-EPHEM_STEPS = 60*60
-EPHEM_STEP_SIZE = "1s"
+EPHEM_START = args.ephem_start
+EPHEM_STEPS = args.ephem_steps
+EPHEM_STEP_SIZE = args.ephem_size
 
 #Custom coordinates apparently not supported by fo (yet?)
 MPCOBSCODE = args.obscode
@@ -119,7 +122,6 @@ df = pd.DataFrame({"Latitude":lats, "Longitude":lons, "hover_name": hover_names,
 
 fig = px.scatter_mapbox(df, lat="Latitude", lon="Longitude", hover_name="hover_name", color="color", mapbox_style="carto-positron", zoom=0, title=f"Groundtrack of {objname}")
 fig.write_image(args.imgpath)
-
 if not args.no_html:
 	fig.write_html(args.htmlpath, auto_open=args.interactive)
 	if args.interactive:
