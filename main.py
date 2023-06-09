@@ -1,6 +1,7 @@
 import os
 import json
 from argparse import ArgumentParser
+from astropy.coordinates import Latitude, Longitude, EarthLocation
 
 import pandas as pd
 import plotly.express as px
@@ -8,7 +9,10 @@ import plotly.express as px
 parser = ArgumentParser(prog="groundtrack.py", description="Plots lon,lat,alt groundtracks of (impacting) asteroids and all observatories with an MPC code")
 
 parser.add_argument("--objname", default="2023 CX1", help="Name of the asteroid groundtrack to plot. Default is 2023 CX1")
-parser.add_argument("--obscode", default="000", help="Observatory from which to calculate altitude and azimuth angles toward the asteroid. Default is Greenwich (000). You can search for them here: https://www.projectpluto.com/mpc_stat.htm or use the map generated with this tool.")
+parser.add_argument("--obscode", default=None, help="MPC code of the observatory from which to calculate altitude and azimuth angles toward the asteroid. Default is Greenwich (000). You can search for them here: https://www.projectpluto.com/mpc_stat.htm or use the map generated with this tool.")
+parser.add_argument("--latlon", default=None, help="Observatory latitude and longitude from which to calculate altitude and azimuth angles toward the asteroid. Default is Greenwich (000). You can search for them here: https://www.projectpluto.com/mpc_stat.htm or use the map generated with this tool.")
+parser.add_argument("--lat", default=None, help="Observatory latitude from which to calculate altitude and azimuth angles toward the asteroid. Default is Greenwich (000). You can search for them here: https://www.projectpluto.com/mpc_stat.htm or use the map generated with this tool.")
+parser.add_argument("--lon", default=None, help="Observatory longitude from which to calculate altitude and azimuth angles toward the asteroid. Default is Greenwich (000). You can search for them here: https://www.projectpluto.com/mpc_stat.htm or use the map generated with this tool.")
 parser.add_argument("--imgpath", default="groundtrack.png", help="Path to save plot to")
 parser.add_argument("--hide-mpc", action="store_true", default=False, help="Do not plot MPC observatory locations")
 parser.add_argument("--no-html", action="store_true", default=False, help="Do not output html file")
@@ -19,6 +23,45 @@ parser.add_argument("--ephem-size", default="1s", help="Size of ephemeris step. 
 parser.add_argument("--ephem-steps", default=60*60, help="Number of ephemeris calculation steps to make. Default: 3600")
 
 args = parser.parse_args()
+
+if args.latlon is not None and (args.lat is not None or args.lon is not None):
+	print("Both combined --latlon and either --lat or --lon specified, can only use either --latlon or --lat and --lon together")
+	exit(1)
+
+if (args.lat is not None) ^ (args.lon is not None):
+	print("Either --lat or --lon specified, but not both. Need both to proceed.")
+	exit(1)
+
+if args.obscode is not None and (args.latlon is not None or (args.lat is not None and args.lon is not None)):
+	print("Both --obscode (observatory code) and --latlon (location) or --lat/--lon specified, can only use one")
+	exit(1)
+
+if args.obscode is None and args.latlon is None and not (args.lat is not None and args.lon is not None):
+	print("No observatory code (--obscode) or location (--latlon or --lat/--lon) specified, using Greenwich (000)")
+	args.obscode = "000"
+
+def get_location(lat, lon):
+	if lat.startswith("-"):
+		lat = "s"+lat[1:]
+	else:
+		lat = "n"+lat
+
+	if lon.startswith("-"):
+		lon = "w"+lon[1:]
+	else:
+		lon = "e"+lon
+
+	location = lat + "_" + lon
+
+	return location
+
+if args.obscode is None and args.latlon is not None:
+	lat, lon = args.latlon.split()
+	location = get_location(lat, lon)
+elif args.obscode is None and args.lat is not None and args.lon is not None:
+	location = get_location(args.lat, args.lon)
+else:
+	location = args.obscode
 
 lons = []
 lats = []
@@ -54,9 +97,6 @@ EPHEM_START = args.ephem_start
 EPHEM_STEPS = args.ephem_steps
 EPHEM_STEP_SIZE = args.ephem_size
 
-#Custom coordinates apparently not supported by fo (yet?)
-MPCOBSCODE = args.obscode
-
 BINPATH = "/home/test/bin/"
 OUTPATH = "/home/test/.find_orb/"
 
@@ -76,7 +116,7 @@ GRABMPCCMD = f"{GRABMPCPATH} {OBSTXTPATH} {objname}"
 """
 
 FOPATH = "fo"#os.path.join(BINPATH, "fo")
-FOCMD = f'{FOPATH} {OBSTXTPATH} -e astroeph.json -C {MPCOBSCODE} -E 3,8 -D {ENVIRONPATH} "EPHEM_START={EPHEM_START}" EPHEM_STEPS={EPHEM_STEPS} EPHEM_STEP_SIZE={EPHEM_STEP_SIZE}'
+FOCMD = f'{FOPATH} {OBSTXTPATH} -e astroeph.json -C {location} -E 3,8 -D {ENVIRONPATH} "EPHEM_START={EPHEM_START}" EPHEM_STEPS={EPHEM_STEPS} EPHEM_STEP_SIZE={EPHEM_STEP_SIZE}'
 
 JSONPATH = os.path.join(OUTPATH, "combined.json")
 
@@ -114,7 +154,7 @@ for i, eph in enumerate(ephemerides):
     lons.append(lon)
     lats.append(lat)
     
-    hover_names.append(f"{t} {altkm}km (Az: {eph['az']}° Alt: {eph['alt']}° from {MPCOBSCODE})")
+    hover_names.append(f"{t} {altkm}km (Az: {eph['az']}° Alt: {eph['alt']}° from {location})")
     
     colors.append("red")
 
