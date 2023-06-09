@@ -1,7 +1,7 @@
 import os
 import json
 from argparse import ArgumentParser
-from astropy.coordinates import Latitude, Longitude, EarthLocation
+from astropy.coordinates import Latitude, Longitude
 
 import pandas as pd
 import plotly.express as px
@@ -10,9 +10,9 @@ parser = ArgumentParser(prog="groundtrack.py", description="Plots lon,lat,alt gr
 
 parser.add_argument("--objname", default="2023 CX1", help="Name of the asteroid groundtrack to plot. Default is 2023 CX1")
 parser.add_argument("--obscode", default=None, help="MPC code of the observatory from which to calculate altitude and azimuth angles toward the asteroid. Default is Greenwich (000). You can search for them here: https://www.projectpluto.com/mpc_stat.htm or use the map generated with this tool.")
-parser.add_argument("--latlon", default=None, help="Observatory latitude and longitude from which to calculate altitude and azimuth angles toward the asteroid. Default is Greenwich (000). You can search for them here: https://www.projectpluto.com/mpc_stat.htm or use the map generated with this tool.")
-parser.add_argument("--lat", default=None, help="Observatory latitude from which to calculate altitude and azimuth angles toward the asteroid. Default is Greenwich (000). You can search for them here: https://www.projectpluto.com/mpc_stat.htm or use the map generated with this tool.")
-parser.add_argument("--lon", default=None, help="Observatory longitude from which to calculate altitude and azimuth angles toward the asteroid. Default is Greenwich (000). You can search for them here: https://www.projectpluto.com/mpc_stat.htm or use the map generated with this tool.")
+parser.add_argument("--latlon", default=None, help="Observatory latitude and longitude from which to calculate altitude and azimuth angles toward the asteroid. Default is Greenwich (000).")
+parser.add_argument("--lat", default=None, help="Observatory latitude from which to calculate altitude and azimuth angles toward the asteroid. Default is Greenwich.")
+parser.add_argument("--lon", default=None, help="Observatory longitude from which to calculate altitude and azimuth angles toward the asteroid. Default is Greenwich.")
 parser.add_argument("--imgpath", default="groundtrack.png", help="Path to save plot to")
 parser.add_argument("--hide-mpc", action="store_true", default=False, help="Do not plot MPC observatory locations")
 parser.add_argument("--no-html", action="store_true", default=False, help="Do not output html file")
@@ -41,6 +41,16 @@ if args.obscode is None and args.latlon is None and not (args.lat is not None an
 	args.obscode = "000"
 
 def get_location(lat, lon):
+
+	lat = lat.replace("S", "-").replace("N", "").replace("+", "")
+	lon = lon.replace("W", "-").replace("E", "").replace("+", "")
+
+	latobj = Latitude(lat)
+	lonobj = Longitude(lon)
+
+	lat = str(latobj.degree)
+	lon = str(lonobj.degree)
+
 	if lat.startswith("-"):
 		lat = "s"+lat[1:]
 	else:
@@ -51,8 +61,16 @@ def get_location(lat, lon):
 	else:
 		lon = "e"+lon
 
+	# Have to truncate here because fo only supports buffer of length 20 (using 9/10 because of _ join)
+	# Which means lat can have accuracy of N23.56789 (1m) and lon E23.56789 (1m) or E234.6789 (11m)
+	# Sucks a bit that accuracy gets lower in lon<-99/lon>99
+	lat = lat[:9]
+	# Giving lon one more because it can be 0-180, vs two digit lat -90<->+90
+	lon = lon[:9]
+
 	location = lat + "_" + lon
 
+	print(location)
 	return location
 
 if args.obscode is None and args.latlon is not None:
