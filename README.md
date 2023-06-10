@@ -30,7 +30,7 @@ You can download the latest MPC observatory data here: https://www.projectpluto.
 
 ## Usage
 
-For the example above: `python main.py`
+For the example above: `python main.py --interactive`
 
 ```
 $ python main.py --help

@@ -61,11 +61,11 @@ def get_location(lat, lon):
 	else:
 		lon = "e"+lon
 
-	# Have to truncate here because fo only supports buffer of length 20 (using 9/10 because of _ join)
-	# Which means lat can have accuracy of N23.56789 (1m) and lon E23.56789 (1m) or E234.6789 (11m)
+	# Have to truncate here because fo only supports buffer of length 20 (using 9 because of _ join and (assumed) \0 end of string)
+	# 1-3 digit lon (0-180), vs 1-2 digit lat -90<->+90
+	# Which means lat can have accuracy of: N2.456789 (0.1m) N23.56789 (1m) and lon: E2.456789 (0.1m) E23.56789 (1m) or E234.6789 (11m)
 	# Sucks a bit that accuracy gets lower in lon<-99/lon>99
 	lat = lat[:9]
-	# Giving lon one more because it can be 0-180, vs two digit lat -90<->+90
 	lon = lon[:9]
 
 	location = lat + "_" + lon
