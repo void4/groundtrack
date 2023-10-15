@@ -115,8 +115,10 @@ EPHEM_START = args.ephem_start
 EPHEM_STEPS = args.ephem_steps
 EPHEM_STEP_SIZE = args.ephem_size
 
-BINPATH = "/home/test/bin/"
-OUTPATH = "/home/test/.find_orb/"
+HOMEPATH = os.path.expanduser("~")
+
+BINPATH = os.path.join(HOMEPATH, "bin/")
+OUTPATH = os.path.join(HOMEPATH, ".find_orb/")
 
 OBSTXTPATH = os.path.join(OUTPATH, "obs.txt")
 ENVIRONPATH = os.path.join(OUTPATH, "environ.def")
